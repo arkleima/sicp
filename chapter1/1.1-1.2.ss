@@ -86,7 +86,7 @@
 (define (find-divisor n test-divisor)
   (cond ((> (square test-divisor) n) n)
         ((divides? test-divisor n) test-divisor)
-        (else (find-divisor n (+ test-divisor 1)))))
+        (else (find-divisor n (next test-divisor)))))
 
 (define (divides? a b)
   (= (remainder b a) 0))
@@ -101,16 +101,83 @@
   (start-prime-test n (runtime)))
 
 (define (start-prime-test n start-time)
-  (if (prime? n)
+  (if (fast-prime? n 50)
       (report-prime (- (runtime) start-time))))
 
 (define (report-prime elapsed-time)
   (display " *** ")
-  (display elapsed-time))
+  (display elapsed-time ))
 
 (define (search-for-primes min max)
-  (cond ((>= min max) (timed-prime-test max))
-        ((even? min) (search-for-primes (add1 min) max))
+  (cond
+   ((>= min max) (timed-prime-test max))
+   ((even? min) (search-for-primes (add1 min) max))
+   (else
+    (timed-prime-test min)
+    (search-for-primes (+ min 2) max))))
+
+;; 1.23
+(define (next n)
+  (if (= n 2)
+      3
+      (+ n 2)))
+
+;; 1.24
+
+(define (expmod base exp m)
+  (cond ((= exp 0) 1)
+        ((even? exp)
+         (remainder (square (expmod base (/ exp 2) m))
+                    m))
         (else
-         (timed-prime-test min)
-         (search-for-primes (+ min 2) max))))
+         (remainder (* base (expmod base (- exp 1) m))
+                    m))))        
+
+(define (try-it a n)
+    (= (expmod a n n) a))
+
+(define (fermat-test n)  
+  (try-it (+ 1 (random (- n 1))) n))
+
+(define (fast-prime? n times)
+  (cond ((= times 0) true)
+        ((fermat-test n) (fast-prime? n (- times 1)))
+        (else false)))
+
+;; 1.27
+(define (strong-fermat-test n)
+  (define (s-f-t a)
+    (cond
+     ((= a 1) true)
+     ((try-it a n) (s-f-t (sub1 a)))
+     (else false)))
+  (s-f-t (sub1 n)))
+
+;; 1.28
+(define (miller-rabin-test n)
+  
+  (define (nt-square-root? base exp m)
+    (and
+      (not (= base 1))
+      (not (= (fast-expn base exp) (sub1 n)))
+      (= (square (fast-expn base exp)) (remainder 1 n))))
+
+  (define (expmod-signal base exp m)
+    (cond
+     ((= exp 0) 1)
+     ((nt-square-root? base exp m) 0)
+     ((even? exp)
+      (remainder (square (expmod base (/ exp 2) m))
+                 m))
+     (else
+      (remainder (* base (expmod base (- exp 1) m))
+                 m))))
+
+  (define (m-r-t a)
+    (cond
+     ((>= a n) true)
+     ((= (expmod-signal a (sub1 n) n) 0) false)
+     ((= (expmod-signal a (sub1 n) n) 1) (m-r-t (add1 a)))
+     (else false)))
+         
+  (m-r-t 2))
